@@ -2,6 +2,6 @@ package ru.sumarokov;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
+        new Concatenation().concatenation(args[0], args[1]);
     }
 }
