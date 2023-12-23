@@ -2,6 +2,7 @@ package ru.sumarokov;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.util.*;
 
 public class Concatenation {
@@ -10,7 +11,7 @@ public class Concatenation {
         File rootFile = new File(pathParentFileDirectory);
         List<File> files = new ArrayList<>();
         getFiles(rootFile, files);
-        getDependencies(files);
+        Map<VirtualFile, List<VirtualFile>> dependence = getDependencies(files, pathParentFileDirectory);
     }
 
     private void getFiles(File rootFile, List<File> resultFiles) {
@@ -24,10 +25,12 @@ public class Concatenation {
         }
     }
 
-    private Map<String, List<String>> getDependencies(List<File> files) {
-        Map<String, List<String>> dependencies = new HashMap<>();
+    private Map<VirtualFile, List<VirtualFile>> getDependencies(List<File> files, String parentPath) {
+        List<VirtualFile> virtualFiles = new ArrayList<>();
+        files.forEach(f -> virtualFiles.add(new VirtualFile(f.getPath())));
+        Map<VirtualFile, List<VirtualFile>> dependencies = new HashMap<>();
         for (File file : files) {
-            List<String> fileDependencies = new ArrayList<>();
+            List<VirtualFile> fileDependencies = new ArrayList<>();
             StringBuilder fileContents = new StringBuilder();
             try (Scanner scanner = new Scanner(file)) {
                 while (scanner.hasNext()) {
@@ -35,16 +38,27 @@ public class Concatenation {
                     if (line.startsWith("require ‘") && line.endsWith("’")) {
                         line = line.replaceFirst("require ‘", "");
                         line = line.substring(0, line.length() - 1);
-                        fileDependencies.add(line);
+                        String path = line;
+                        VirtualFile codependent = virtualFiles.
+                                stream()
+                                .filter(v -> v.getPath().equals(convertToSystemPath(path, parentPath)))
+                                .findFirst()
+                                .orElseThrow(() -> new InvalidPathException(convertToSystemPath(path, parentPath), "The file the link points to does not exist"));
+                        fileDependencies.add(codependent);
                     } else {
-                        fileContents.append(line);
+                        fileContents.append(line).append("\n");
                     }
                 }
-                dependencies.put(fileContents.toString(), fileDependencies);
+                VirtualFile fileDependence = new VirtualFile(file.getPath(), fileContents.toString());
+                dependencies.put(fileDependence, fileDependencies);
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }
         }
         return dependencies;
+    }
+
+    private String convertToSystemPath(String path, String parentPath) {
+       return parentPath + File.separator + path.replace("/", File.separator) + ".txt";
     }
 }
