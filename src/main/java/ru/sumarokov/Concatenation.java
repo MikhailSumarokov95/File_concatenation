@@ -37,8 +37,7 @@ public class Concatenation {
                     String line = scanner.nextLine();
                     if (line.startsWith("require ‘") && line.endsWith("’")) {
                         line = line.replaceFirst("require ‘", "");
-                        line = line.substring(0, line.length() - 1);
-                        String path = line;
+                        String path = line.substring(0, line.length() - 1);
                         VirtualFile codependent = virtualFiles.
                                 stream()
                                 .filter(v -> v.getPath().equals(convertToSystemPath(path, parentPath)))
