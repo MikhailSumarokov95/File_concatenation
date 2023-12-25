@@ -11,7 +11,23 @@ public class Concatenation {
         File rootFile = new File(pathParentFileDirectory);
         List<File> files = new ArrayList<>();
         getFiles(rootFile, files);
-        Map<VirtualFile, List<VirtualFile>> dependence = getDependencies(files, pathParentFileDirectory);
+        List<VirtualFile> dependencies = getDependencies(files, pathParentFileDirectory);
+        List<VirtualFile> sortedFile = new ArrayList<>();
+        for (VirtualFile file : dependencies) {
+            sortFile(file, sortedFile);
+        }
+    }
+
+    private void sortFile(VirtualFile file, List<VirtualFile> sortedFiles) {
+        if (!file.getIsSorted()) {
+            if (!file.getDependencies().isEmpty()) {
+                for (VirtualFile dependence : file.getDependencies()) {
+                    sortFile(dependence, sortedFiles);
+                }
+            }
+            sortedFiles.add(file);
+            file.setIsSorted(true);
+        }
     }
 
     private void getFiles(File rootFile, List<File> resultFiles) {
@@ -25,10 +41,9 @@ public class Concatenation {
         }
     }
 
-    private Map<VirtualFile, List<VirtualFile>> getDependencies(List<File> files, String parentPath) {
+    private List<VirtualFile> getDependencies(List<File> files, String parentPath) {
         List<VirtualFile> virtualFiles = new ArrayList<>();
         files.forEach(f -> virtualFiles.add(new VirtualFile(f.getPath())));
-        Map<VirtualFile, List<VirtualFile>> dependencies = new HashMap<>();
         for (File file : files) {
             List<VirtualFile> fileDependencies = new ArrayList<>();
             StringBuilder fileContents = new StringBuilder();
@@ -48,16 +63,21 @@ public class Concatenation {
                         fileContents.append(line).append("\n");
                     }
                 }
-                VirtualFile fileDependence = new VirtualFile(file.getPath(), fileContents.toString());
-                dependencies.put(fileDependence, fileDependencies);
+                VirtualFile fileDependence = virtualFiles.
+                        stream()
+                        .filter(v -> v.getPath().equals(file.getPath()))
+                        .findFirst()
+                        .orElseThrow(() -> new InvalidPathException(file.getPath(), "The file the link points to does not exist"));
+                fileDependence.setContents(fileContents.toString());
+                fileDependence.setDependencies(fileDependencies);
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }
         }
-        return dependencies;
+        return virtualFiles;
     }
 
     private String convertToSystemPath(String path, String parentPath) {
-       return parentPath + File.separator + path.replace("/", File.separator) + ".txt";
+        return parentPath + File.separator + path.replace("/", File.separator) + ".txt";
     }
 }
